@@ -10,6 +10,8 @@
 #include <sys/mman.h>
 #include <pci/pci.h>
 #include <signal.h>
+#include <nvml.h>
+
 
 #define PG_SZ sysconf(_SC_PAGE_SIZE)
 #define PRINT_ERROR()                                        \
@@ -29,6 +31,7 @@ struct device
     const char *vram;
     const char *arch;
     const char *name;
+    char pciBusId[NVML_DEVICE_PCI_BUS_ID_BUFFER_SIZE]; // Add this line
 };
 
 
@@ -111,23 +114,28 @@ int pci_detect_dev(void)
     pci_init(pacc);
     pci_scan_bus(pacc);
 
-    for (pci_dev = pacc->devices; pci_dev; pci_dev = pci_dev->next)
-    {
-        pci_fill_info(pci_dev, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_CLASS);
+for (pci_dev = pacc->devices; pci_dev; pci_dev = pci_dev->next)
+{
+    pci_fill_info(pci_dev, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_CLASS);
 
-        for (uint32_t i = 0; i < dev_table_size; i++)
+    for (uint32_t i = 0; i < dev_table_size; i++)
+    {
+        if (pci_dev->device_id == dev_table[i].dev_id)
         {
-            if (pci_dev->device_id == dev_table[i].dev_id)
-            {
-                devices[num_devs] = dev_table[i];
-                devices[num_devs].bar0 = (pci_dev->base_addr[0] & 0xFFFFFFFF);
-                devices[num_devs].bus = pci_dev->bus;
-                devices[num_devs].dev = pci_dev->dev;
-                devices[num_devs].func = pci_dev->func;
-                num_devs++;
-            }
+            devices[num_devs] = dev_table[i];
+            devices[num_devs].bar0 = (pci_dev->base_addr[0] & 0xFFFFFFFF);
+            devices[num_devs].bus = pci_dev->bus;
+            devices[num_devs].dev = pci_dev->dev;
+            devices[num_devs].func = pci_dev->func;
+
+            // Format and store the PCI Bus ID
+            sprintf(devices[num_devs].pciBusId, "%04x:%02x:%02x.0", pci_dev->domain, pci_dev->bus, pci_dev->dev);
+
+            num_devs++;
         }
     }
+}
+
 
     pci_cleanup(pacc);
     return num_devs;
@@ -143,6 +151,14 @@ int main(int argc, char **argv)
     uint32_t phys_addr;
     uint32_t read_result;
     uint32_t base_offset;
+
+    nvmlReturn_t result;
+    result = nvmlInit();
+    if (NVML_SUCCESS != result)      
+    {
+          fprintf(stderr, "Failed to initialize NVML: %s\n", nvmlErrorString(result));
+          return 1;
+    }
 
     int num_devs;
     char *MEM = "\x2f\x64\x65\x76\x2f\x6d\x65\x6d";
@@ -170,32 +186,48 @@ int main(int argc, char **argv)
     cleanup_sig_handler();
 
 
-    while (1)
-    {
-        printf("\rVRAM Temps: |");
-        for (int i = 0; i < num_devs; i++) {
-            struct device *device = &devices[i];
+while (1)
+{
+    for (int i = 0; i < num_devs; i++) {
+        nvmlDevice_t nvml_device;
+        char uuid[NVML_DEVICE_UUID_BUFFER_SIZE];
+        struct device *device = &devices[i];
 
-            phys_addr = (device->bar0 + device->offset);
-            base_offset = phys_addr & ~(PG_SZ-1);
-            map_base = mmap(0, PG_SZ, PROT_READ | PROT_WRITE, MAP_SHARED, fd, base_offset);
-
-            if(map_base == (void *) -1)
-            {
-                if (fd != -1)
-                    close(fd);
-                printf("Can't read memory. If you are root, enable kernel parameter iomem=relaxed\n");
-                PRINT_ERROR();
-            }
-            virt_addr = (uint8_t *) map_base + (phys_addr - base_offset);
-            read_result = *((uint32_t *) virt_addr);
-            temp = ((read_result & 0x00000fff) / 0x20);
-
-            printf(" %3u°C |", temp);
+        result = nvmlDeviceGetHandleByPciBusId_v2(devices[i].pciBusId, &nvml_device);
+        if (NVML_SUCCESS != result)
+        {
+            fprintf(stderr, "Failed to get handle for device %d: %s\n", i, nvmlErrorString(result));
+            continue;
         }
-        fflush(stdout);
-        sleep(1);
-    }
 
-    return 0;
+        result = nvmlDeviceGetUUID(nvml_device, uuid, NVML_DEVICE_UUID_BUFFER_SIZE);
+        if (NVML_SUCCESS != result)
+        {
+            fprintf(stderr, "Failed to get UUID for device %d: %s\n", i, nvmlErrorString(result));
+            continue;
+        }
+          
+        phys_addr = (device->bar0 + device->offset);
+        base_offset = phys_addr & ~(PG_SZ-1);
+        map_base = mmap(0, PG_SZ, PROT_READ | PROT_WRITE, MAP_SHARED, fd, base_offset);
+
+        if(map_base == (void *) -1)
+        {
+            if (fd != -1)
+                close(fd);
+            printf("Can't read memory. If you are root, enable kernel parameter iomem=relaxed\n");
+            PRINT_ERROR();
+        }
+        virt_addr = (uint8_t *) map_base + (phys_addr - base_offset);
+        read_result = *((uint32_t *) virt_addr);
+        temp = ((read_result & 0x00000fff) / 0x20);
+        printf("DCGM_FI_DEV_VRAM_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, temp);
+    }
+    fflush(stdout);
+    sleep(1);
+}
+
+nvmlShutdown();
+return 0;
+
 }
