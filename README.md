@@ -8,7 +8,7 @@ There are several ways to run this
 
 As a docker container 
 ```
-docker run -d --privileged --gpus all -p 9500:9500 gddr6-metrics-exporter
+docker run -d --privileged --gpus all -p 9500:9500 jjziets/gddr6-metrics-exporter:latest
 
 ```
 
