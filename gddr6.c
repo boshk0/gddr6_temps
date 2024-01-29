@@ -12,6 +12,8 @@
 #include <signal.h>
 #include <nvml.h>
 
+int debug_flag = 0;
+
 
 #define PG_SZ sysconf(_SC_PAGE_SIZE)
 #define PRINT_ERROR()                                        \
@@ -45,6 +47,7 @@ struct device devices[32];
 struct device dev_table[] =
 {
     { .offset = 0x0000E2A8, .dev_id = 0x26B1, .vram = "GDDR6",  .arch = "AD102", .name =  "RTX A6000" },
+    { .offset = 0x0000E2A8, .dev_id = 0x2230, .vram = "GDDR6",  .arch = "AD102", .name =  "RTX A6000" },
     { .offset = 0x0000E2A8, .dev_id = 0x2684, .vram = "GDDR6X", .arch = "AD102", .name =  "RTX 4090" },
     { .offset = 0x0000E2A8, .dev_id = 0x2704, .vram = "GDDR6X", .arch = "AD103", .name =  "RTX 4080" },
     { .offset = 0x0000E2A8, .dev_id = 0x2782, .vram = "GDDR6X", .arch = "AD104", .name =  "RTX 4070 Ti" },
@@ -118,6 +121,13 @@ for (pci_dev = pacc->devices; pci_dev; pci_dev = pci_dev->next)
 {
     pci_fill_info(pci_dev, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_CLASS);
 
+    // Print out each NVIDIA device's ID for debugging
+   if (debug_flag) {
+	    if (pci_dev->vendor_id == 0x10DE) { // 0x10DE is NVIDIA's vendor ID
+       		printf("Found NVIDIA Device - Vendor ID: %04x, Device ID: %04x\n", pci_dev->vendor_id, pci_dev->device_id);
+    		}
+	}
+
     for (uint32_t i = 0; i < dev_table_size; i++)
     {
         if (pci_dev->device_id == dev_table[i].dev_id)
@@ -144,6 +154,12 @@ for (pci_dev = pacc->devices; pci_dev; pci_dev = pci_dev->next)
 
 int main(int argc, char **argv)
 {
+    // Parse command-line arguments
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-d") == 0) {
+            debug_flag = 1;
+        }
+    }
     (void) argc;
     (void) argv;
     void *virt_addr;
@@ -173,8 +189,10 @@ int main(int argc, char **argv)
 
     for (int i = 0; i < num_devs; i++) {
         struct device *device = &devices[i];
-        printf("Device: %s %s (%s / 0x%04x) pci=%x:%x:%x\n", device->name, device->vram,
-            device->arch, device->dev_id, device->bus, device->dev, device->func);
+   	if (debug_flag) {
+        	printf("Device: %s %s (%s / 0x%04x) pci=%x:%x:%x\n", device->name, device->vram,
+            	device->arch, device->dev_id, device->bus, device->dev, device->func);
+    	}
     }
 
     if ((fd = open(MEM, O_RDWR | O_SYNC)) == -1)
