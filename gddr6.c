@@ -161,6 +161,9 @@ int main(int argc, char **argv)
             debug_flag = 1;
         }
     }
+
+
+
     (void) argc;
     (void) argv;
     void *virt_addr;
@@ -207,6 +210,18 @@ int main(int argc, char **argv)
 
 while (1)
 {
+        // Open the metrics file in write mode to overwrite the existing content
+        FILE *metrics_file = fopen("./metrics.txt", "w");
+        if (metrics_file == NULL) {
+            perror("Error opening metrics file");
+            return 1;
+        }
+
+    // Write the header
+    fprintf(metrics_file, "# HELP DCGM_FI_DEV_VRAM_TEMP VRAM temperature (in C).\n");
+    fprintf(metrics_file, "# TYPE DCGM_FI_DEV_VRAM_TEMP gauge\n");
+
+
     for (int i = 0; i < num_devs; i++) {
         nvmlDevice_t nvml_device;
         char uuid[NVML_DEVICE_UUID_BUFFER_SIZE];
@@ -225,7 +240,7 @@ while (1)
             fprintf(stderr, "Failed to get UUID for device %d: %s\n", i, nvmlErrorString(result));
             continue;
         }
-          
+
         phys_addr = (device->bar0 + device->offset);
         base_offset = phys_addr & ~(PG_SZ-1);
         map_base = mmap(0, PG_SZ, PROT_READ | PROT_WRITE, MAP_SHARED, fd, base_offset);
@@ -241,9 +256,16 @@ while (1)
         read_result = *((uint32_t *) virt_addr);
         temp = ((read_result & 0x00000fff) / 0x20);
         printf("DCGM_FI_DEV_VRAM_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, temp);
+        // Write to file instead of printing to stdout
+        fprintf(metrics_file, "DCGM_FI_DEV_VRAM_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, temp);
+
     }
     fflush(stdout);
-    sleep(1);
+    // Make sure to flush the stream to write to the file immediately
+    fflush(metrics_file);
+    fclose(metrics_file);
+
+    sleep(5);
 }
 
 nvmlShutdown();
