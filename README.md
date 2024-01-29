@@ -13,7 +13,8 @@ docker run -d --privileged --gpus all -p 9500:9500 gddr6-metrics-exporter
 ```
 
 As service one machine
-```bash -c "\
+```
+bash -c "\
 sudo wget -q -O /usr/local/bin/gddr6-metrics-exporter_supervisor_script.sh https://raw.githubusercontent.com/jjziets/gddr6_temps/master/gddr6-metrics-exporter_supervisor_script.sh && \
 sudo chmod +x /usr/local/bin/gddr6-metrics-exporter_supervisor_script.sh && \
 sudo wget -q -O /etc/systemd/system/gddr6-metrics-exporter.service https://raw.githubusercontent.com/jjziets/gddr6_temps/master/gddr6-metrics-exporter.service && \
@@ -21,7 +22,7 @@ sudo systemctl daemon-reload && \
 sudo systemctl enable gddr6-metrics-exporter && \
 sudo systemctl start gddr6-metrics-exporter"
 ```
-
+Check that is running with sudo systemctl status gddr6-metrics-exporter
 
 Or as a program. 
 These findings are based on reverse engineering of the NVIDIA GPU Linux driver.
