@@ -1,4 +1,4 @@
-## GDDR6/GDDR6X GPU Memory Temperature Reader for Linux
+## GDDR6/GDDR6X GPU Memory Temperature Reader for Linux with Promethese expoter
 
 Reads GDDR6/GDDR6X VRAM memory temperatures from multiple supported NVIDIA GPUs found in a host Linux system.
 These findings are based on reverse engineering of the NVIDIA GPU Linux driver.
