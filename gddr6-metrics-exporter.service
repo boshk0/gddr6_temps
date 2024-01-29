@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/supervisor_script.sh
+ExecStart=/usr/local/bin/gddr6-metrics-exporter_supervisor_script.sh
 Restart=on-failure
 
 [Install]
