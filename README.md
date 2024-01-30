@@ -68,4 +68,3 @@ sudo metrics_exporter &
 - RTX A4500 (GA102)
 - L4 (AD104)
 
-![](https://github.com/olealgoritme/gddr6/blob/master/gddr6_use.gif)
