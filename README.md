@@ -3,14 +3,14 @@
 This program reads GDDR6/GDDR6X VRAM memory temperatures from multiple supported NVIDIA GPUs found in a host Linux system and creates a Prometheus exporter that allows Prometheus to scrape it on port 9500.
 
 **Installation**
-Docker
+Docker:
 You can run the exporter as a Docker container. Ensure you have Docker installed, and then execute the following command:
 ```
 docker run -d --privileged --gpus all -p 9500:9500 jjziets/gddr6-metrics-exporter:latest
 
 ```
 
-Service (Linux Machine)
+Service (Linux Machine):
 You can also run it as a service on a Linux machine:
 ```
 bash -c "\
@@ -26,7 +26,7 @@ Check if it's running with:
 sudo systemctl status gddr6-metrics-exporter
 ```
 
-Program
+Program:
 If you prefer running it as a standalone program, follow these steps:
 
 ## Dependencies
