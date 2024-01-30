@@ -18,6 +18,16 @@ run_metrics_exporter() {
   done
 }
 
+# Cleanup function to be executed when the script receives a signal to stop
+cleanup() {
+  echo "Stopping gddr6 and metrics_exporter..."
+  pkill -P $$  # Kills all child processes of the script
+  exit
+}
+
+# Trap TERM and INT signals and call the cleanup function
+trap cleanup SIGTERM SIGINT
+
 # Start both processes in the background
 run_gddr6 &
 run_metrics_exporter &
