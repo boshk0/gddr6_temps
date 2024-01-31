@@ -66,6 +66,22 @@ struct device dev_table[] =
     { .offset = 0x0000E2A8, .dev_id = 0x26b9, .vram = "GDDR6",  .arch = "AD102", .name =  "L40S" },
 };
 
+// Define human-readable names for throttle reasons
+static const char* throttle_reason_to_string(unsigned long long reason) {
+    switch (reason) {
+        case nvmlClocksThrottleReasonApplicationsClocksSetting: return "ApplicationsClocksSetting";
+        case nvmlClocksThrottleReasonDisplayClockSetting: return "DisplayClockSetting";
+        case nvmlClocksThrottleReasonGpuIdle: return "GpuIdle";
+        case nvmlClocksThrottleReasonHwPowerBrakeSlowdown: return "HwPowerBrakeSlowdown";
+        case nvmlClocksThrottleReasonHwSlowdown: return "HwSlowdown";
+        case nvmlClocksThrottleReasonHwThermalSlowdown: return "HwThermalSlowdown";
+        case nvmlClocksThrottleReasonNone: return "None";
+        case nvmlClocksThrottleReasonSwPowerCap: return "SwPowerCap";
+        case nvmlClocksThrottleReasonSwThermalSlowdown: return "SwThermalSlowdown";
+        case nvmlClocksThrottleReasonSyncBoost: return "SyncBoost";
+        default: return "Unknown";
+    }
+}
 
 // prototypes
 void cleanup(int signal);
@@ -258,8 +274,45 @@ while (1)
         printf("DCGM_FI_DEV_VRAM_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, temp);
         // Write to file instead of printing to stdout
         fprintf(metrics_file, "DCGM_FI_DEV_VRAM_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, temp);
-
     }
+
+    // Write the header for clocks throttle reasons
+    fprintf(metrics_file, "# TYPE DCGM_FI_DEV_CLOCKS_THROTTLE_REASONS gauge\n");
+    fprintf(metrics_file, "# HELP DCGM_FI_DEV_CLOCKS_THROTTLE_REASONS The current throttle reasons for GPU clocks. Each bit in the value represents a specific throttle reason as defined: None (0), GpuIdle (1), ApplicationsClocksSetting (2), SwPowerCap (4), HwSlowdown (8), SyncBoost (16), SwThermalSlowdown (32), HwThermalSlowdown (64), HwPowerBrakeSlowdown (128), DisplayClockSetting (256).\n");
+
+
+    for (int i = 0; i < num_devs; i++) {
+        nvmlDevice_t nvml_device;
+        char uuid[NVML_DEVICE_UUID_BUFFER_SIZE];
+        unsigned long long clocksThrottleReasons;
+
+        result = nvmlDeviceGetHandleByPciBusId_v2(devices[i].pciBusId, &nvml_device);
+        if (NVML_SUCCESS != result)
+        {
+            fprintf(stderr, "Failed to get handle for device %d: %s\n", i, nvmlErrorString(result));
+            continue;
+        }
+
+        result = nvmlDeviceGetUUID(nvml_device, uuid, NVML_DEVICE_UUID_BUFFER_SIZE);
+        if (NVML_SUCCESS != result)
+        {
+            fprintf(stderr, "Failed to get UUID for device %d: %s\n", i, nvmlErrorString(result));
+            continue;
+        }
+        result = nvmlDeviceGetCurrentClocksThrottleReasons(nvml_device, &clocksThrottleReasons);
+        if (NVML_SUCCESS != result) {
+            fprintf(stderr, "Failed to get clocks throttle reasons for device %d: %s\n", i, nvmlErrorString(result));
+            continue;
+        }
+
+        // Write throttle reasons to metrics file
+        printf( "DCGM_FI_DEV_CLOCKS_THROTTLE_REASONS{gpu=\"%d\", UUID=\"%s\", reason=\"%s\"} %llu\n",
+                i, uuid, throttle_reason_to_string(clocksThrottleReasons), clocksThrottleReasons);
+        fprintf(metrics_file, "DCGM_FI_DEV_CLOCKS_THROTTLE_REASONS{gpu=\"%d\", UUID=\"%s\", reason=\"%s\"} %llu\n",
+                i, uuid, throttle_reason_to_string(clocksThrottleReasons), clocksThrottleReasons);
+     }
+
+
     fflush(stdout);
     // Make sure to flush the stream to write to the file immediately
     fflush(metrics_file);
