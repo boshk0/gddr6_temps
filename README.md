@@ -1,19 +1,19 @@
 ## GDDR6/GDDR6X GPU Memory Temperature Reader for Linux with Prometheus expoter. it forms part of my bigger project https://github.com/jjziets/DCMontoring/tree/main
 
-The program Reads GDDR6/GDDR6X VRAM memory temperatures from multiple supported NVIDIA GPUs found in a host Linux system.
+This program reads GDDR6/GDDR6X VRAM memory temperatures from multiple supported NVIDIA GPUs found in a host Linux system and creates a Prometheus exporter that allows Prometheus to scrape it on port 9500.
 
-It creates an exporter that allows Prometheus to scrape it on port 9500
-
-There are several ways to run this
-
-As a docker container 
+**Installation**
+Docker:
+You can run the exporter as a Docker container. Ensure you have Docker installed, and then execute the following command:
 ```
-docker run -d --privileged --gpus all -p 9500:9500 gddr6-metrics-exporter
+docker run -d --privileged --gpus all -p 9500:9500 jjziets/gddr6-metrics-exporter:latest
 
 ```
 
-As service one machine
-```bash -c "\
+Service (Linux Machine):
+You can also run it as a service on a Linux machine:
+```
+bash -c "\
 sudo wget -q -O /usr/local/bin/gddr6-metrics-exporter_supervisor_script.sh https://raw.githubusercontent.com/jjziets/gddr6_temps/master/gddr6-metrics-exporter_supervisor_script.sh && \
 sudo chmod +x /usr/local/bin/gddr6-metrics-exporter_supervisor_script.sh && \
 sudo wget -q -O /etc/systemd/system/gddr6-metrics-exporter.service https://raw.githubusercontent.com/jjziets/gddr6_temps/master/gddr6-metrics-exporter.service && \
@@ -21,10 +21,13 @@ sudo systemctl daemon-reload && \
 sudo systemctl enable gddr6-metrics-exporter && \
 sudo systemctl start gddr6-metrics-exporter"
 ```
+Check if it's running with:
+```
+sudo systemctl status gddr6-metrics-exporter
+```
 
-
-Or as a program. 
-These findings are based on reverse engineering of the NVIDIA GPU Linux driver.
+Program:
+If you prefer running it as a standalone program, follow these steps:
 
 ## Dependencies
 - libpci-dev 
@@ -50,6 +53,10 @@ sudo chmod +x metrics_exporter
 sudo metrics_exporter &
 ```
 
+./gddr6 -d will provide more verbose output of information. 
+gddr6 will write to the local storage metrics.txt 
+metrics_exporter read this metrics.txt and provide a basic website that can be scraped by Prometheus. 
+
 ## Supported GPUs
 - RTX A6000 (AD102)
 - RTX A5000
@@ -67,4 +74,3 @@ sudo metrics_exporter &
 - RTX A4500 (GA102)
 - L4 (AD104)
 
-![](https://github.com/olealgoritme/gddr6/blob/master/gddr6_use.gif)

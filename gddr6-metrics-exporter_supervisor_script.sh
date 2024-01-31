@@ -1,13 +1,10 @@
 #!/bin/bash
 
-# Define the directory where the executables will be stored
 INSTALL_DIR="/usr/local/bin"
 
-# Function to download and prepare the executable
 download_executable() {
     local url=$1
     local filepath="${INSTALL_DIR}/$(basename $url)"
-
     if [ ! -f "$filepath" ]; then
         echo "Downloading $filepath..."
         wget -q -O "$filepath" "$url"
@@ -17,11 +14,17 @@ download_executable() {
     fi
 }
 
-# Download gddr6 and metrics_exporter
 download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v2.0-pre/gddr6"
 download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v2.0-pre/metrics_exporter"
 
-# Function to start gddr6 and restart it if it exits
+cleanup() {
+  echo "Stopping gddr6 and metrics_exporter..."
+  pkill -P $$  # Kills all child processes of the script
+  exit
+}
+
+trap cleanup SIGTERM SIGINT
+
 run_gddr6() {
   while true; do
     "${INSTALL_DIR}/gddr6"
@@ -30,7 +33,6 @@ run_gddr6() {
   done
 }
 
-# Function to start metrics_exporter and restart it if it exits
 run_metrics_exporter() {
   while true; do
     "${INSTALL_DIR}/metrics_exporter"
@@ -39,9 +41,7 @@ run_metrics_exporter() {
   done
 }
 
-# Start both processes in the background
 run_gddr6 &
 run_metrics_exporter &
 
-# Wait for all background processes to finish
 wait
