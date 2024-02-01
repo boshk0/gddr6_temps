@@ -1,6 +1,9 @@
 # HELP DCGM_FI_DEV_VRAM_TEMP VRAM temperature (in C).
 # TYPE DCGM_FI_DEV_VRAM_TEMP gauge
-DCGM_FI_DEV_VRAM_TEMP{gpu="0", UUID="GPU-15dd5f45-ff16-3b2a-8991-fca3fd9ad822"} 76
+DCGM_FI_DEV_VRAM_TEMP{gpu="0", UUID="GPU-15dd5f45-ff16-3b2a-8991-fca3fd9ad822"} 78
+# HELP DCGM_FI_DEV_HOT_SPOT_TEMP Hot Spot temperature (in C).
+# TYPE DCGM_FI_DEV_HOT_SPOT_TEMP gauge
+DCGM_FI_DEV_HOT_SPOT_TEMP{gpu="0", UUID="GPU-15dd5f45-ff16-3b2a-8991-fca3fd9ad822"} 80
 # TYPE DCGM_FI_DEV_CLOCKS_THROTTLE_REASONS gauge
 # HELP DCGM_FI_DEV_CLOCKS_THROTTLE_REASONS The current throttle reasons for GPU clocks. Each bit in the value represents a specific throttle reason as defined: None (0), GpuIdle (1), ApplicationsClocksSetting (2), SwPowerCap (4), HwSlowdown (8), SyncBoost (16), SwThermalSlowdown (32), HwThermalSlowdown (64), HwPowerBrakeSlowdown (128), DisplayClockSetting (256).
 DCGM_FI_DEV_CLOCKS_THROTTLE_REASONS{gpu="0", UUID="GPU-15dd5f45-ff16-3b2a-8991-fca3fd9ad822", reason="SwPowerCap"} 4

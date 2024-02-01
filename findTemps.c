@@ -13,7 +13,7 @@
 #include <nvml.h>
 
 int debug_flag = 0;
-#define HOTSPOT_REGISTER_OFFSET 0x0002046c
+
 
 #define PG_SZ sysconf(_SC_PAGE_SIZE)
 #define PRINT_ERROR()                                        \
@@ -66,22 +66,6 @@ struct device dev_table[] =
     { .offset = 0x0000E2A8, .dev_id = 0x26b9, .vram = "GDDR6",  .arch = "AD102", .name =  "L40S" },
 };
 
-// Define human-readable names for throttle reasons
-static const char* throttle_reason_to_string(unsigned long long reason) {
-    switch (reason) {
-        case nvmlClocksThrottleReasonApplicationsClocksSetting: return "ApplicationsClocksSetting";
-        case nvmlClocksThrottleReasonDisplayClockSetting: return "DisplayClockSetting";
-        case nvmlClocksThrottleReasonGpuIdle: return "GpuIdle";
-        case nvmlClocksThrottleReasonHwPowerBrakeSlowdown: return "HwPowerBrakeSlowdown";
-        case nvmlClocksThrottleReasonHwSlowdown: return "HwSlowdown";
-        case nvmlClocksThrottleReasonHwThermalSlowdown: return "HwThermalSlowdown";
-        case nvmlClocksThrottleReasonNone: return "None";
-        case nvmlClocksThrottleReasonSwPowerCap: return "SwPowerCap";
-        case nvmlClocksThrottleReasonSwThermalSlowdown: return "SwThermalSlowdown";
-        case nvmlClocksThrottleReasonSyncBoost: return "SyncBoost";
-        default: return "Unknown";
-    }
-}
 
 // prototypes
 void cleanup(int signal);
@@ -226,17 +210,7 @@ int main(int argc, char **argv)
 
 while (1)
 {
-        // Open the metrics file in write mode to overwrite the existing content
-        FILE *metrics_file = fopen("./metrics.txt", "w");
-        if (metrics_file == NULL) {
-            perror("Error opening metrics file");
-            return 1;
-        }
-
-    // Write the header
-    fprintf(metrics_file, "# HELP DCGM_FI_DEV_VRAM_TEMP VRAM temperature (in C).\n");
-    fprintf(metrics_file, "# TYPE DCGM_FI_DEV_VRAM_TEMP gauge\n");
-
+    const uint32_t scan_range = 0x1000; // Example range of 4096 bytes
 
     for (int i = 0; i < num_devs; i++) {
         nvmlDevice_t nvml_device;
@@ -268,115 +242,28 @@ while (1)
             printf("Can't read memory. If you are root, enable kernel parameter iomem=relaxed\n");
             PRINT_ERROR();
         }
-        virt_addr = (uint8_t *) map_base + (phys_addr - base_offset);
-        read_result = *((uint32_t *) virt_addr);
-        temp = ((read_result & 0x00000fff) / 0x20);
-        printf("DCGM_FI_DEV_VRAM_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, temp);
-        // Write to file instead of printing to stdout
-        fprintf(metrics_file, "DCGM_FI_DEV_VRAM_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, temp);
+        // Scan for potential temperature sensors within the range
+    	for (uint32_t offset = device->offset - scan_range / 2; offset < device->offset + scan_range / 2; offset += 4) {
+        	uint32_t scan_addr = device->bar0 + offset;
+        	uint32_t scan_base_offset = scan_addr & ~(PG_SZ-1);
+        	uint8_t *scan_virt_addr = (uint8_t *) map_base + (scan_addr - scan_base_offset);
+        	uint32_t scan_result = *((uint32_t *) scan_virt_addr);
+        	uint32_t potential_temp = (scan_result & 0x00000fff) / 0x20;
+
+	        // Filter for plausible temperature values
+        	if (potential_temp >= 0 && potential_temp <= 100) {
+            	printf("Potential Temp Sensor at Offset 0x%X for GPU %d: %u degrees\n", offset, i, potential_temp);
+        }
     }
-
-   fprintf(metrics_file, "# HELP DCGM_FI_DEV_HOT_SPOT_TEMP Hot Spot temperature (in C).\n");
-   fprintf(metrics_file, "# TYPE DCGM_FI_DEV_HOT_SPOT_TEMP gauge\n");
-    for (int i = 0; i < num_devs; i++) {
-        nvmlDevice_t nvml_device;
-        char uuid[NVML_DEVICE_UUID_BUFFER_SIZE];
-        struct device *device = &devices[i];
-
-        result = nvmlDeviceGetHandleByPciBusId_v2(devices[i].pciBusId, &nvml_device);
-        if (NVML_SUCCESS != result)
-        {
-            fprintf(stderr, "Failed to get handle for device %d: %s\n", i, nvmlErrorString(result));
-            continue;
-        }
-
-        result = nvmlDeviceGetUUID(nvml_device, uuid, NVML_DEVICE_UUID_BUFFER_SIZE);
-        if (NVML_SUCCESS != result)
-        {
-            fprintf(stderr, "Failed to get UUID for device %d: %s\n", i, nvmlErrorString(result));
-            continue;
-        }
-
-        phys_addr = (device->bar0 + device->offset);
-        base_offset = phys_addr & ~(PG_SZ-1);
-        map_base = mmap(0, PG_SZ, PROT_READ | PROT_WRITE, MAP_SHARED, fd, base_offset);
-
-        if(map_base == (void *) -1)
-        {
-            if (fd != -1)
-                close(fd);
-            printf("Can't read memory. If you are root, enable kernel parameter iomem=relaxed\n");
-            PRINT_ERROR();
-        }
-	// Code to read and write the hot spot temperature for the current device
-    	uint32_t hotSpotRegAddr = device->bar0 + HOTSPOT_REGISTER_OFFSET;
-    	uint32_t hotSpotBaseOffset = hotSpotRegAddr & ~(PG_SZ-1);
-    	void* hotSpotMapBase = mmap(0, PG_SZ, PROT_READ, MAP_SHARED, fd, hotSpotBaseOffset);
-    	if (hotSpotMapBase == MAP_FAILED) {
-        	fprintf(stderr, "Failed to mmap for hot spot temperature\n");
-        	continue; // Skip this device if we cannot map the register space
-    	}
-
-    	uint32_t hotSpotRegValue = *((uint32_t *)((char *)hotSpotMapBase + (hotSpotRegAddr - hotSpotBaseOffset)));
-    	munmap(hotSpotMapBase, PG_SZ); // Unmap immediately after reading
-
-	uint32_t hotSpotTemp = (hotSpotRegValue >> 8) & 0xff;
-    	if (hotSpotTemp < 0x7f) {
-        	// Write hot spot temperature metric for this device
-		fprintf(stderr,"DCGM_FI_DEV_HOT_SPOT_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, hotSpotTemp); 
-        	fprintf(metrics_file, "DCGM_FI_DEV_HOT_SPOT_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, hotSpotTemp);
-    	} else {
-        // Optionally handle invalid readings
     }
-   }// end of for loop for 
-
-
-    // Write the header for clocks throttle reasons
-    fprintf(metrics_file, "# TYPE DCGM_FI_DEV_CLOCKS_THROTTLE_REASONS gauge\n");
-    fprintf(metrics_file, "# HELP DCGM_FI_DEV_CLOCKS_THROTTLE_REASONS The current throttle reasons for GPU clocks. Each bit in the value represents a specific throttle reason as defined: None (0), GpuIdle (1), ApplicationsClocksSetting (2), SwPowerCap (4), HwSlowdown (8), SyncBoost (16), SwThermalSlowdown (32), HwThermalSlowdown (64), HwPowerBrakeSlowdown (128), DisplayClockSetting (256).\n");
-
-
-    for (int i = 0; i < num_devs; i++) {
-        nvmlDevice_t nvml_device;
-        char uuid[NVML_DEVICE_UUID_BUFFER_SIZE];
-        unsigned long long clocksThrottleReasons;
-
-        result = nvmlDeviceGetHandleByPciBusId_v2(devices[i].pciBusId, &nvml_device);
-        if (NVML_SUCCESS != result)
-        {
-            fprintf(stderr, "Failed to get handle for device %d: %s\n", i, nvmlErrorString(result));
-            continue;
-        }
-
-        result = nvmlDeviceGetUUID(nvml_device, uuid, NVML_DEVICE_UUID_BUFFER_SIZE);
-        if (NVML_SUCCESS != result)
-        {
-            fprintf(stderr, "Failed to get UUID for device %d: %s\n", i, nvmlErrorString(result));
-            continue;
-        }
-        result = nvmlDeviceGetCurrentClocksThrottleReasons(nvml_device, &clocksThrottleReasons);
-        if (NVML_SUCCESS != result) {
-            fprintf(stderr, "Failed to get clocks throttle reasons for device %d: %s\n", i, nvmlErrorString(result));
-            continue;
-        }
-
-        // Write throttle reasons to metrics file
-        printf( "DCGM_FI_DEV_CLOCKS_THROTTLE_REASONS{gpu=\"%d\", UUID=\"%s\", reason=\"%s\"} %llu\n",
-                i, uuid, throttle_reason_to_string(clocksThrottleReasons), clocksThrottleReasons);
-        fprintf(metrics_file, "DCGM_FI_DEV_CLOCKS_THROTTLE_REASONS{gpu=\"%d\", UUID=\"%s\", reason=\"%s\"} %llu\n",
-                i, uuid, throttle_reason_to_string(clocksThrottleReasons), clocksThrottleReasons);
-     }
-
 
     fflush(stdout);
     // Make sure to flush the stream to write to the file immediately
-    fflush(metrics_file);
-    fclose(metrics_file);
+
 
     sleep(5);
 }
 
-close(fd);
 nvmlShutdown();
 return 0;
 

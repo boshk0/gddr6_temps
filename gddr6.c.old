@@ -13,7 +13,7 @@
 #include <nvml.h>
 
 int debug_flag = 0;
-#define HOTSPOT_REGISTER_OFFSET 0x0002046c
+
 
 #define PG_SZ sysconf(_SC_PAGE_SIZE)
 #define PRINT_ERROR()                                        \
@@ -275,61 +275,6 @@ while (1)
         // Write to file instead of printing to stdout
         fprintf(metrics_file, "DCGM_FI_DEV_VRAM_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, temp);
     }
-
-   fprintf(metrics_file, "# HELP DCGM_FI_DEV_HOT_SPOT_TEMP Hot Spot temperature (in C).\n");
-   fprintf(metrics_file, "# TYPE DCGM_FI_DEV_HOT_SPOT_TEMP gauge\n");
-    for (int i = 0; i < num_devs; i++) {
-        nvmlDevice_t nvml_device;
-        char uuid[NVML_DEVICE_UUID_BUFFER_SIZE];
-        struct device *device = &devices[i];
-
-        result = nvmlDeviceGetHandleByPciBusId_v2(devices[i].pciBusId, &nvml_device);
-        if (NVML_SUCCESS != result)
-        {
-            fprintf(stderr, "Failed to get handle for device %d: %s\n", i, nvmlErrorString(result));
-            continue;
-        }
-
-        result = nvmlDeviceGetUUID(nvml_device, uuid, NVML_DEVICE_UUID_BUFFER_SIZE);
-        if (NVML_SUCCESS != result)
-        {
-            fprintf(stderr, "Failed to get UUID for device %d: %s\n", i, nvmlErrorString(result));
-            continue;
-        }
-
-        phys_addr = (device->bar0 + device->offset);
-        base_offset = phys_addr & ~(PG_SZ-1);
-        map_base = mmap(0, PG_SZ, PROT_READ | PROT_WRITE, MAP_SHARED, fd, base_offset);
-
-        if(map_base == (void *) -1)
-        {
-            if (fd != -1)
-                close(fd);
-            printf("Can't read memory. If you are root, enable kernel parameter iomem=relaxed\n");
-            PRINT_ERROR();
-        }
-	// Code to read and write the hot spot temperature for the current device
-    	uint32_t hotSpotRegAddr = device->bar0 + HOTSPOT_REGISTER_OFFSET;
-    	uint32_t hotSpotBaseOffset = hotSpotRegAddr & ~(PG_SZ-1);
-    	void* hotSpotMapBase = mmap(0, PG_SZ, PROT_READ, MAP_SHARED, fd, hotSpotBaseOffset);
-    	if (hotSpotMapBase == MAP_FAILED) {
-        	fprintf(stderr, "Failed to mmap for hot spot temperature\n");
-        	continue; // Skip this device if we cannot map the register space
-    	}
-
-    	uint32_t hotSpotRegValue = *((uint32_t *)((char *)hotSpotMapBase + (hotSpotRegAddr - hotSpotBaseOffset)));
-    	munmap(hotSpotMapBase, PG_SZ); // Unmap immediately after reading
-
-	uint32_t hotSpotTemp = (hotSpotRegValue >> 8) & 0xff;
-    	if (hotSpotTemp < 0x7f) {
-        	// Write hot spot temperature metric for this device
-		fprintf(stderr,"DCGM_FI_DEV_HOT_SPOT_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, hotSpotTemp); 
-        	fprintf(metrics_file, "DCGM_FI_DEV_HOT_SPOT_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, hotSpotTemp);
-    	} else {
-        // Optionally handle invalid readings
-    }
-   }// end of for loop for 
-
 
     // Write the header for clocks throttle reasons
     fprintf(metrics_file, "# TYPE DCGM_FI_DEV_CLOCKS_THROTTLE_REASONS gauge\n");
