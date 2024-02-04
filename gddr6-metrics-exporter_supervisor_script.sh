@@ -14,8 +14,8 @@ download_executable() {
     fi
 }
 
-download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v2.0-pre/gddr6"
-download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v2.0-pre/metrics_exporter"
+download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v3.0-pre/gddr6"
+download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v3.0-pre/metrics_exporter"
 
 cleanup() {
   echo "Stopping gddr6 and metrics_exporter..."
