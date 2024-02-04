@@ -1,5 +1,5 @@
 [Unit]
-Description=gddr6 and metrics_exporter service
+Description=nvml_direct_access and metrics_exporter service
 After=network.target
 
 [Service]
