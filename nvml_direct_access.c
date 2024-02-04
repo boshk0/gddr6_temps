@@ -101,7 +101,7 @@ void cleanup_sig_handler(void) {
 
 // Function to create the metric.txt file
 void createMetricFile(int device_count){
-    metrics_file = fopen("metric.txt", "w");
+    metrics_file = fopen("metrics.txt", "w");
     if (!metrics_file) {
         fprintf(stderr, "Failed to open metric.txt for writing\n");
         return;
@@ -242,8 +242,8 @@ int main(void) {
                 uint32_t vram_temp_value = *vram_temp_reg;
                 vram_temp_value = ((vram_temp_value & 0x00000fff) / 0x20);
                 printf(" VRAM Temp: %u ", vram_temp_value);
-                if (num_devices < MAX_DEVICES) {
-                    devices[num_devices].vram_temp = vram_temp_value;
+                if (i < MAX_DEVICES) {
+                    devices[i].vram_temp = vram_temp_value;
                 } else {
                     fprintf(stderr, "Exceeded maximum number of devices\n");
                 }
@@ -258,13 +258,11 @@ int main(void) {
                     }
         	    }
 
-               if (num_devices < MAX_DEVICES) {
-                    strncpy(devices[num_devices].uuid, uuid, sizeof(devices[num_devices].uuid));
+               if (i < MAX_DEVICES) {
+                    strncpy(devices[i].uuid, uuid, sizeof(devices[num_devices].uuid));
                 } else {
                     fprintf(stderr, "Exceeded maximum number of devices\n");
                 }
-                //printf("DCGM_FI_DEV_VRAM_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, vram_temp_value);
-                //fprintf(metrics_file, "DCGM_FI_DEV_VRAM_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, vram_temp_value);
                 
 	            // Code to read and write the hot spot temperature for the current device
     	        uint32_t hotSpotRegAddr = (pci_dev->base_addr[0] & 0xFFFFFFFF) + HOTSPOT_REGISTER_OFFSET;
@@ -282,10 +280,9 @@ int main(void) {
     	        if (hotSpotTemp < 0x7f) {
                     printf("HotSPotTemp: %u\n", hotSpotTemp);
         	        // Write hot spot temperature metric for this device
-		            //fprintf(stderr,"DCGM_FI_DEV_HOT_SPOT_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, hotSpotTemp); 
-        	        //fprintf(metrics_file, "DCGM_FI_DEV_HOT_SPOT_TEMP{gpu=\"%d\", UUID=\"%s\"} %u\n", i, uuid, hotSpotTemp);
-                    if (num_devices < MAX_DEVICES) {
-                        devices[num_devices].hotspot_temp = hotSpotTemp;
+
+                    if (i < MAX_DEVICES) {
+                        devices[i].hotspot_temp = hotSpotTemp;
                     } else {
                         fprintf(stderr, "Exceeded maximum number of devices\n");
                     }
@@ -298,8 +295,8 @@ int main(void) {
                     continue;
                 }
 
-                if (num_devices < MAX_DEVICES) {
-                        devices[num_devices].clock_throttle_reasons = clocksThrottleReasons;
+                if (i < MAX_DEVICES) {
+                        devices[i].clock_throttle_reasons = clocksThrottleReasons;
                 } else {
                         fprintf(stderr, "Exceeded maximum number of devices\n");
                 }
