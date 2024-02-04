@@ -127,11 +127,9 @@ void cleanup(int signal)
 void cleanup_sig_handler(void)
 {
     struct sigaction sa;
-    memset(&sa, 0, sizeof(sa)); // Clear structure
-    sa.sa_handler = cleanup;
-    sa.sa_flags = SA_RESTART;
-    sigemptyset(&sa.sa_mask);
-
+    sa.sa_handler = &cleanup;
+    sa.sa_flags = 0;
+    sigfillset(&sa.sa_mask);
 
     if (sigaction(SIGINT, &sa, NULL) < 0)
         perror("Cannot handle SIGINT");
