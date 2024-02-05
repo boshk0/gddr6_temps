@@ -72,4 +72,4 @@ metrics_exporter read this metrics.txt and provide a basic website that can be s
 - L4 (AD104)
 
 
-Credit goes to olealgoritme/gddr6 for his work in using the Pcie bus direct read to get to the undocumented registers.  also, a shout out to ddobreff for [mmpos](https://app.mmpos.eu/) for helping find the hotspot register. 
+Credit goes to olealgoritme/gddr6 for his work in using the Pcie bus direct read to get to the undocumented registers.  also, a big thanks to ddobreff from [mmpos](https://app.mmpos.eu/) for helping find the hotspot register. 
