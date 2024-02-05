@@ -46,15 +46,14 @@ sudo reboot
 ## Clone & Run
 ```
 sudo git clone https://github.com/jjziets/gddr6_temps.git
-sudo make && sudo ./gddr6 &
+sudo make && sudo ./nvml_direct_access &
 
 sudo g++ -std=c++11 -o metrics_exporter metrics_exporter.cpp -lpthread
 sudo chmod +x metrics_exporter
 sudo metrics_exporter &
 ```
 
-./gddr6 -d will provide more verbose output of information. 
-gddr6 will write to the local storage metrics.txt 
+nvml_direct_access will write to the local storage metrics.txt 
 metrics_exporter read this metrics.txt and provide a basic website that can be scraped by Prometheus. 
 
 ## Supported GPUs
@@ -68,8 +67,6 @@ metrics_exporter read this metrics.txt and provide a basic website that can be s
 - RTX 3080 Ti (GA102)
 - RTX 3080 (GA102)
 - RTX 3080 LHR (GA102)
-- RTX 3070 (GA104)
-- RTX 3070 LHR (GA104)
 - RTX A2000 (GA106)
 - RTX A4500 (GA102)
 - L4 (AD104)
