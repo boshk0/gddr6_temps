@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Function to start gddr6 and restart it if it exits
-run_gddr6() {
+run_nvml_direct_access() {
   while true; do
-    ./gddr6
-    echo "gddr6 crashed with exit code $?. Respawning.." >&2
+    ./nvml_direct_access
+    echo "nvml_direct_access crashed with exit code $?. Respawning.." >&2
     sleep 1
   done
 }
@@ -19,7 +19,7 @@ run_metrics_exporter() {
 }
 
 # Start both processes in the background
-run_gddr6 &
+run_nvml_direct_access &
 run_metrics_exporter &
 
 # Wait for all background processes to finish
