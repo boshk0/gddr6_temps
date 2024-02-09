@@ -1,6 +1,6 @@
-## GDDR6/GDDR6X GPU Memory Temperature Reader for Linux with Prometheus expoter. it forms part of my bigger project https://github.com/jjziets/DCMontoring/tree/main
+## GDDR6/GDDR6X GPU Memory Temperature Reader for Linux with Prometheus expoter. It forms part of my bigger project https://github.com/jjziets/DCMontoring/tree/main
 
-This program reads GDDR6/GDDR6X VRAM memory temperatures from multiple supported NVIDIA GPUs found in a host Linux system and creates a Prometheus exporter that allows Prometheus to scrape it on port 9500.
+This program reads GDDR6/GDDR6X VRAM memory and GPU Core Hot Spot temperatures from multiple supported NVIDIA GPUs found in a host Linux system and creates a Prometheus exporter that allows Prometheus to scrape it on port 9500.
 
 **Installation**
 Docker:
