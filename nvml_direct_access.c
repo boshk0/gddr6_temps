@@ -11,6 +11,7 @@
 #include <pci/pci.h>
 #include <signal.h>
 #include <nvml.h>
+#include <stdbool.h>
 
 
 #define VRAM_REGISTER_OFFSET 0x0000E2A8
@@ -60,6 +61,10 @@ void printPciDev(const struct pci_dev *dev);
 void cleanup(int signal);
 void cleanup_sig_handler(void);
 void createMetricFile(int device_count);
+int getGpuPciBusId(unsigned int index, char *pciBusId, unsigned int length);
+unsigned int getTotalAerErrorsForDevice(unsigned int gpuIndex);
+unsigned int checkGpuErrorState(unsigned int gpuIndex);
+bool initializeNvml(void);
 
 
 
@@ -129,11 +134,104 @@ void createMetricFile(int device_count){
             fprintf(metrics_file, "DCGM_FI_DEV_CLOCKS_THROTTLE_REASON{reason=\"%s\", gpu=\"%d\", UUID=\"%s\"} %d\n",
                 throttleReasons[j].reasonString, i, devices[i].uuid, isThrottling);
         }
+        unsigned int total_aer_errors = getTotalAerErrorsForDevice(i);
+        // Write metrics to file
+        fprintf(metrics_file, "# HELP GPU_AER_TOTAL_ERRORS Total AER errors for GPU.\n");
+        fprintf(metrics_file, "# TYPE GPU_AER_TOTAL_ERRORS counter\n");
+        fprintf(metrics_file, "GPU_AER_TOTAL_ERRORS{gpu=\"%d\", UUID=\"%s\"} %u\n", i, devices[i].uuid, total_aer_errors);
+
+        unsigned int error_state = checkGpuErrorState(i);
+        fprintf(metrics_file, "# HELP GPU_AER_ERROR_STATE Current error state for GPU (1 for error, 0 for no error).\n");
+        fprintf(metrics_file, "# TYPE GPU_AER_ERROR_STATE gauge\n");
+        fprintf(metrics_file, "GPU_ERROR_STATE{gpu=\"%d\", UUID=\"%s\"} %d\n", i, devices[i].uuid, error_state);
+
+
     }
 
     fflush(metrics_file);
     fclose(metrics_file);
     metrics_file=NULL;
+}
+
+// Utility function to get the PCI bus ID as a string for a given GPU index
+int getGpuPciBusId(unsigned int index, char *pciBusId, unsigned int length) {
+    nvmlDevice_t device;
+    nvmlReturn_t result = nvmlDeviceGetHandleByIndex(index, &device);
+    if (result != NVML_SUCCESS) return -1;
+
+    nvmlPciInfo_t pci;
+    result = nvmlDeviceGetPciInfo(device, &pci);
+    if (result != NVML_SUCCESS) return -1;
+
+    snprintf(pciBusId, length, "%04x:%02x:%02x.0", pci.domain, pci.bus, pci.device);
+    return 0;
+}
+
+// Function to count AER errors from /var/log/syslog for a specific GPU
+unsigned int getTotalAerErrorsForDevice(unsigned int gpuIndex) {
+    char pciBusId[20];
+    if (getGpuPciBusId(gpuIndex, pciBusId, sizeof(pciBusId)) != 0) {
+        fprintf(stderr, "Failed to get PCI bus ID for GPU %u\n", gpuIndex);
+        return 0;
+    } else {
+        printf("pciBusId:%s\n", pciBusId);
+    }
+
+    FILE *logFile = fopen("/var/log/syslog", "r");
+    if (!logFile) {
+        perror("Failed to open /var/log/syslog");
+        return 0;
+    }
+
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    unsigned int aerErrorCount = 0;
+
+    while ((read = getline(&line, &len, logFile)) != -1) {
+        if (strstr(line, "AER") && strstr(line, pciBusId)) {
+            aerErrorCount++;
+        }
+    }
+
+    free(line);
+    fclose(logFile);
+
+    return aerErrorCount;
+}
+
+// Function to initialize NVML, to be called before any other NVML operations
+bool initializeNvml(void) {
+    nvmlReturn_t result = nvmlInit();
+    if (result == NVML_SUCCESS) {
+        return true; // Initialization successful
+    } else {
+        fprintf(stderr, "Failed to initialize NVML: %s\n", nvmlErrorString(result));
+        return false; // Initialization failed
+    }
+}
+
+// Function to check if there's an error state for a given GPU
+unsigned int checkGpuErrorState(unsigned int gpuIndex) {
+    nvmlDevice_t device;
+    unsigned int fanSpeed;
+    nvmlReturn_t result;
+
+    // Attempt to get handle for the specified GPU
+    result = nvmlDeviceGetHandleByIndex(gpuIndex, &device);
+    if (result != NVML_SUCCESS) {
+        fprintf(stderr, "Failed to get handle for GPU %u: %s\n", gpuIndex, nvmlErrorString(result));
+        return 1; // Error state
+    }
+
+    // Attempt to get the fan speed for the GPU
+    result = nvmlDeviceGetFanSpeed(device, &fanSpeed);
+    if (result != NVML_SUCCESS) {
+        fprintf(stderr, "Failed to get fan speed for GPU %u: %s\n", gpuIndex, nvmlErrorString(result));
+        return 1; // Error state
+    }
+
+    return 0; // No error state
 }
 
 int main(void) {
@@ -162,7 +260,7 @@ int main(void) {
         pci_init(pacc);
         pci_scan_bus(pacc);
 
-        printf("\033[2J\033[H");
+        //printf("\033[2J\033[H");
         for (unsigned int i = 0; i < device_count; i++) {
         nvmlDevice_t nvml_device;
         unsigned long long clocksThrottleReasons;
@@ -218,6 +316,7 @@ int main(void) {
                 pci_dev->bus == pciInfo.bus &&
                 pci_dev->dev == pciInfo.device) {
 
+                //debugging code that is pritned to the screen when -v is set. 
                 //printf("Found matching NVIDIA Device - Vendor ID: %04x, Device ID: %04x, bus: %02x dev: %02x func: %02x  \n", pci_dev->vendor_id, pci_dev->device_id, pci_dev->bus, pci_dev->dev, pci_dev->func );
                 //printPciDev(pci_dev);
                 //printPciInfo(&pciInfo);
@@ -241,7 +340,7 @@ int main(void) {
                 uint32_t *vram_temp_reg = (uint32_t *)((char *)map_base + (phys_addr - base_offset));
                 uint32_t vram_temp_value = *vram_temp_reg;
                 vram_temp_value = ((vram_temp_value & 0x00000fff) / 0x20);
-                printf(" VRAM Temp: %u ", vram_temp_value);
+                printf(" VRAM Temp: %u C ", vram_temp_value);
                 if (i < MAX_DEVICES) {
                     devices[i].vram_temp = vram_temp_value;
                 } else {
@@ -278,7 +377,7 @@ int main(void) {
 
 	            uint32_t hotSpotTemp = (hotSpotRegValue >> 8) & 0xff;
     	        if (hotSpotTemp < 0x7f) {
-                    printf("HotSPotTemp: %u\n", hotSpotTemp);
+                    printf("HotSPotTemp: %u C\n", hotSpotTemp);
         	        // Write hot spot temperature metric for this device
 
                     if (i < MAX_DEVICES) {
