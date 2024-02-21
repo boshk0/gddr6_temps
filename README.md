@@ -1,6 +1,6 @@
-## GDDR6/GDDR6X GPU Memory Temperature Reader for Linux with Prometheus expoter. it forms part of my bigger project https://github.com/jjziets/DCMontoring/tree/main
+## GDDR6/GDDR6X GPU Memory Temperature Reader for Linux with Prometheus expoter. It forms part of my bigger project https://github.com/jjziets/DCMontoring/tree/main
 
-This program reads GDDR6/GDDR6X VRAM memory temperatures from multiple supported NVIDIA GPUs found in a host Linux system and creates a Prometheus exporter that allows Prometheus to scrape it on port 9500.
+This program reads GDDR6/GDDR6X VRAM memory and GPU Core Hot Spot temperatures from multiple supported NVIDIA GPUs found in a host Linux system and creates a Prometheus exporter that allows Prometheus to scrape it on port 9500.
 
 **Installation**
 Docker:
@@ -46,15 +46,14 @@ sudo reboot
 ## Clone & Run
 ```
 sudo git clone https://github.com/jjziets/gddr6_temps.git
-sudo make && sudo ./gddr6 &
+sudo make && sudo ./nvml_direct_access &
 
 sudo g++ -std=c++11 -o metrics_exporter metrics_exporter.cpp -lpthread
 sudo chmod +x metrics_exporter
 sudo metrics_exporter &
 ```
 
-./gddr6 -d will provide more verbose output of information. 
-gddr6 will write to the local storage metrics.txt 
+nvml_direct_access will write to the local storage metrics.txt 
 metrics_exporter read this metrics.txt and provide a basic website that can be scraped by Prometheus. 
 
 ## Supported GPUs
@@ -68,9 +67,9 @@ metrics_exporter read this metrics.txt and provide a basic website that can be s
 - RTX 3080 Ti (GA102)
 - RTX 3080 (GA102)
 - RTX 3080 LHR (GA102)
-- RTX 3070 (GA104)
-- RTX 3070 LHR (GA104)
 - RTX A2000 (GA106)
 - RTX A4500 (GA102)
 - L4 (AD104)
 
+
+Credit goes to olealgoritme/gddr6 for his work in using the Pcie bus direct read to get to the undocumented registers.  also, a big thanks to ddobreff from [mmpos](https://app.mmpos.eu/) for helping find the hotspot register. 
