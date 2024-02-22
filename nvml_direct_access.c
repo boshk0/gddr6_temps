@@ -141,7 +141,7 @@ void createMetricFile(int device_count){
         fprintf(metrics_file, "GPU_AER_TOTAL_ERRORS{gpu=\"%d\", UUID=\"%s\"} %u\n", i, devices[i].uuid, total_aer_errors);
 
         unsigned int error_state = checkGpuErrorState(i);
-        fprintf(metrics_file, "# HELP GPU_AER_ERROR_STATE Current error state for GPU (1 for error, 0 for no error).\n");
+        fprintf(metrics_file, "# HELP GPU_AER_ERROR_STATE Current error state for GPU (2 for error, 1 for no error, 0 unknown state).\n");
         fprintf(metrics_file, "# TYPE GPU_AER_ERROR_STATE gauge\n");
         fprintf(metrics_file, "GPU_ERROR_STATE{gpu=\"%d\", UUID=\"%s\"} %d\n", i, devices[i].uuid, error_state);
 
@@ -174,7 +174,7 @@ unsigned int getTotalAerErrorsForDevice(unsigned int gpuIndex) {
         fprintf(stderr, "Failed to get PCI bus ID for GPU %u\n", gpuIndex);
         return 0;
     } else {
-        printf("pciBusId:%s\n", pciBusId);
+       ; //printf("pciBusId:%s\n", pciBusId);
     }
 
     FILE *logFile = fopen("/var/log/syslog", "r");
@@ -221,17 +221,17 @@ unsigned int checkGpuErrorState(unsigned int gpuIndex) {
     result = nvmlDeviceGetHandleByIndex(gpuIndex, &device);
     if (result != NVML_SUCCESS) {
         fprintf(stderr, "Failed to get handle for GPU %u: %s\n", gpuIndex, nvmlErrorString(result));
-        return 1; // Error state
+        return 2; // Error state
     }
 
     // Attempt to get the fan speed for the GPU
     result = nvmlDeviceGetFanSpeed(device, &fanSpeed);
     if (result != NVML_SUCCESS) {
         fprintf(stderr, "Failed to get fan speed for GPU %u: %s\n", gpuIndex, nvmlErrorString(result));
-        return 1; // Error state
+        return 2; // Error state
     }
 
-    return 0; // No error state
+    return 1; // No error state
 }
 
 int main(void) {
