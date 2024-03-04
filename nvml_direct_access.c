@@ -65,7 +65,42 @@ int getGpuPciBusId(unsigned int index, char *pciBusId, unsigned int length);
 unsigned int getTotalAerErrorsForDevice(unsigned int gpuIndex);
 unsigned int checkGpuErrorState(unsigned int gpuIndex);
 bool initializeNvml(void);
+unsigned int countUpgradablePackages(void);
 
+
+unsigned int countUpgradablePackages(void) {
+    FILE *fp;
+    unsigned int count = 0;
+    char buffer[1024];
+
+    // Attempt to read the package count from /var/log/package-count.txt
+    fp = fopen("/var/log/package-count.txt", "r");
+    if (fp != NULL) {
+        if (fgets(buffer, sizeof(buffer), fp) != NULL) {
+            sscanf(buffer, "Upgradable packages: %u", &count);
+        }
+        fclose(fp); 
+        return count;
+    } else {
+        // Fallback to counting using apt list --upgradable
+        fp = popen("apt list --upgradable 2>/dev/null", "r");
+        if (fp == NULL) {
+            fprintf(stderr, "Failed to run command\n");
+            return 0;
+        }
+
+        // Read the output a line at a time - count each package line
+        while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+            if (strstr(buffer, "upgradable from")) {
+                count++;
+            }
+        }
+
+        // Close the pipe
+        pclose(fp);
+        return count;
+    }
+}
 
 
 // Cleanup function to release resources
@@ -145,8 +180,13 @@ void createMetricFile(int device_count){
         fprintf(metrics_file, "# TYPE GPU_AER_ERROR_STATE gauge\n");
         fprintf(metrics_file, "GPU_ERROR_STATE{gpu=\"%d\", UUID=\"%s\"} %d\n", i, devices[i].uuid, error_state);
 
-
     }
+
+    // Inside createMetricFile or main loop
+    unsigned int upgradablePackages = countUpgradablePackages();
+    fprintf(metrics_file, "# HELP APT_UPGRADABLE_PACKAGES Number of APT packages that can be upgraded.\n");
+    fprintf(metrics_file, "# TYPE APT_UPGRADABLE_PACKAGES gauge\n");
+    fprintf(metrics_file, "APT_UPGRADABLE_PACKAGES %u\n", upgradablePackages);
 
     fflush(metrics_file);
     fclose(metrics_file);
