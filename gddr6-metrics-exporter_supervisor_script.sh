@@ -25,7 +25,7 @@ cleanup() {
 
 trap cleanup SIGTERM SIGINT
 
-run_gddr6() {
+run_nvml_direct_access() {
   while true; do
     "${INSTALL_DIR}/nvml_direct_access"
     echo "nvml_direct_access crashed with exit code $?. Respawning.." >&2
@@ -41,7 +41,7 @@ run_metrics_exporter() {
   done
 }
 
-nvml_direct_access &
+run_nvml_direct_access &
 run_metrics_exporter &
 
 wait
