@@ -141,7 +141,7 @@ void cleanup_sig_handler(void) {
 
 // Function to create the metric.txt file
 void createMetricFile(int device_count){
-    metrics_file = fopen("metrics.txt", "w");
+    metrics_file = fopen("metrics.tmp", "w");
     if (!metrics_file) {
         fprintf(stderr, "Failed to open metric.txt for writing\n");
         return;
@@ -191,6 +191,7 @@ void createMetricFile(int device_count){
     fflush(metrics_file);
     fclose(metrics_file);
     metrics_file=NULL;
+    rename("metrics.tmp", "metrics.txt");
 }
 
 // Utility function to get the PCI bus ID as a string for a given GPU index
