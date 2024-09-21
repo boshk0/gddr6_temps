@@ -87,6 +87,6 @@ _Currently, nvml_direct_access does not accept command-line options._
 
 
 ## Acknowledgments
-olealgoritme/gddr6: For pioneering the method to access undocumented GPU registers via direct PCIe reads.
-ddobreff from mmpos: For assistance in identifying the GPU hotspot register.
-NVIDIA NVML: For providing the API to interact with NVIDIA GPUs.
+- olealgoritme/gddr6: For pioneering the method to access undocumented GPU registers via direct PCIe reads.
+- ddobreff from mmpos: For assistance in identifying the GPU hotspot register.
+- NVIDIA NVML: For providing the API to interact with NVIDIA GPUs.
