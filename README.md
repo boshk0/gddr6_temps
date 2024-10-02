@@ -56,6 +56,20 @@ sudo metrics_exporter &
 nvml_direct_access will write to the local storage metrics.txt 
 metrics_exporter read this metrics.txt and provide a basic website that can be scraped by Prometheus. 
 
+## Using nvml_direct_access as a CLI Tool
+nvml_direct_access reads GPU metrics directly from the hardware registers and writes them to a local metrics.txt file as well as prints it to the terminal. 
+
+**Running nvml_direct_access:**
+```
+sudo ./nvml_direct_access
+```
+
+Runs continuously, updating metrics.txt every 5 seconds as well as write to the terminal
+Requires sudo to access hardware registers.
+Options:
+_Currently, nvml_direct_access does not accept command-line options._
+
+
 ## Supported GPUs
 - RTX A6000 (AD102)
 - RTX A5000
@@ -72,4 +86,7 @@ metrics_exporter read this metrics.txt and provide a basic website that can be s
 - L4 (AD104)
 
 
-Credit goes to olealgoritme/gddr6 for his work in using the Pcie bus direct read to get to the undocumented registers.  also, a big thanks to ddobreff from [mmpos](https://app.mmpos.eu/) for helping find the hotspot register. 
+## Acknowledgments
+- olealgoritme/gddr6: For pioneering the method to access undocumented GPU registers via direct PCIe reads.
+- ddobreff from mmpos: For assistance in identifying the GPU hotspot register.
+- NVIDIA NVML: For providing the API to interact with NVIDIA GPUs.
