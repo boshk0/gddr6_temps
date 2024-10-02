@@ -4,6 +4,7 @@
         "typeinfo": "c",
         "*.tcc": "cpp",
         "string": "cpp",
-        "istream": "cpp"
+        "istream": "cpp",
+        "bitset": "c"
     }
 }

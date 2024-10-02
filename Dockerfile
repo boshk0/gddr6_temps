@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy the necessary files into the container
 COPY nvml_direct_access.c .
+#COPY metrics.ini .
 COPY metrics_exporter.cpp .
 COPY httplib.h .
 COPY entrypoint.sh .

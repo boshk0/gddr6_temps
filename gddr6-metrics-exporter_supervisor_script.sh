@@ -14,8 +14,8 @@ download_executable() {
     fi
 }
 
-download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v7.0-pre/nvml_direct_access"
-download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v7.0-pre/metrics_exporter"
+download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v0.8/nvml_direct_access"
+download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v0.8/metrics_exporter"
 
 cleanup() {
   echo "Stopping gddr6 and metrics_exporter..."
@@ -25,7 +25,7 @@ cleanup() {
 
 trap cleanup SIGTERM SIGINT
 
-run_gddr6() {
+run_nvml_direct_access() {
   while true; do
     "${INSTALL_DIR}/nvml_direct_access"
     echo "nvml_direct_access crashed with exit code $?. Respawning.." >&2
@@ -41,7 +41,7 @@ run_metrics_exporter() {
   done
 }
 
-nvml_direct_access &
+run_nvml_direct_access &
 run_metrics_exporter &
 
 wait
