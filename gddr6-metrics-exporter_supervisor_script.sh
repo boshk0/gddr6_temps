@@ -14,9 +14,9 @@ download_executable() {
     fi
 }
 
-download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v0.9/nvml_direct_access"
-download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v0.9/metrics_exporter"
-download_executable "https://github.com/jjziets/gddr6_temps/releases/download/v0.9/metrics.ini"
+download_executable "https://github.com/boshk0/gddr6_temps/releases/download/stable/nvml_direct_access"
+download_executable "https://github.com/boshk0/gddr6_temps/releases/download/stable/metrics_exporter"
+download_executable "https://github.com/boshk0/gddr6_temps/releases/download/stable/metrics.ini"
 
 cleanup() {
   echo "Stopping gddr6 and metrics_exporter..."
