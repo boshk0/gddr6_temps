@@ -1,5 +1,5 @@
 [Unit]
-Description=nvml_direct_access and metrics_exporter service
+Description=Nvidia GPU Exporter
 After=network.target
 
 [Service]
