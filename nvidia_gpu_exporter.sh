@@ -19,7 +19,7 @@ download_executable "https://github.com/boshk0/gddr6_temps/releases/download/sta
 download_executable "https://github.com/boshk0/gddr6_temps/releases/download/stable/metrics.ini"
 
 cleanup() {
-  echo "Stopping gddr6 and metrics_exporter..."
+  echo "Stopping nvidia_gpu_exporter..."
   pkill -P $$  # Kills all child processes of the script
   exit
 }
